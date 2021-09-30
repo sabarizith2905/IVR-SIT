@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="e09f887e-523c-4da6-bacf-03993661fa25" >
+		<jms:active-mq-connection username="admin" password="admin">
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6eb2725f-e940-4c16-b04b-f056ac8275f2" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="jmsdemoFlow1" doc:id="896a3952-358e-4831-a3bb-60b544da0a27" >
+		<http:listener doc:name="Listener" doc:id="c31200f6-80f5-4d8f-95b7-bcb2f324d92a" config-ref="HTTP_Listener_config" path="/postmydataqueue"/>
+		<logger level="ERROR" doc:name="Logger" doc:id="972c13ad-a54b-474b-a5d0-784c7ba66082" message="Listerne Post the Data to TestMyQueue : #[payload]"/>
+		<jms:publish doc:name="Publish" doc:id="f9a99bec-5fb5-47e6-9ffa-4d370f0823d0" config-ref="JMS_Config" destination="listenerpostqueue"/>
+	</flow>
+	<flow name="jmsdemoFlow" doc:id="f17605c1-cf49-4202-93b9-99a9dacf1ac7" >
+		<jms:listener doc:name="On New Message" doc:id="033c26cb-488b-4b41-8cc6-fdd293f73ed7" config-ref="JMS_Config" destination="testmyqueue" inboundContentType="application/json">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="f33600c3-fec9-42f7-8114-2d143c8d3519" message="Data Cosumed from TestQueue : #[payload]"/>
+	</flow>
+	<flow name="jmsdemoFlow2" doc:id="033eeb57-2cfc-4461-9f05-315a1aea5b81" >
+		<scheduler doc:name="Scheduler" doc:id="afb170ed-df3b-4844-acf3-5ee2011c3c3d" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="20000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<logger level="INFO" doc:name="Logger" doc:id="31d5cfa1-5bf7-440e-8be3-953c403cb707" message="Schedule Job Start after 20 Seconds !!!!!!!!!!!!!!!!!!!!!!"/>
+		<jms:consume doc:name="Consume" doc:id="9f28b062-6654-4011-98c4-05652ccf6b58" config-ref="JMS_Config" destination="listenerpostqueue" contentType="application/json"/>
+		<logger level="INFO" doc:name="Logger" doc:id="9f2ed04c-0271-43c2-8ec2-a21dee815763" message="Message received from the queue  : #[payload]"/>
+	</flow>
+	<flow name="jmsdemoFlow3" doc:id="512660cd-61bd-46c0-ab33-270c5155ece0" >
+		<jms:listener doc:name="On New Message" doc:id="e44edd53-7895-42b4-946f-5af1c4b2fcd6" config-ref="JMS_Config" destination="ackqueuetest" ackMode="MANUAL" inboundContentType="application/json"/>
+		<logger level="INFO" doc:name="Logger" doc:id="6cf3c936-6589-438b-9f09-5b63b5110f3a" message="Message Post in the Ack Queue : #[payload]"/>
+		<set-variable value="#[attributes.ackId]" doc:name="Set Variable" doc:id="d5addbdd-509d-45ba-bb1d-ffc3f5e6ac92" variableName="acknowlegeId"/>
+		<jms:ack doc:name="Ack" doc:id="9ee34276-916d-4276-a82b-ce5e002f7209" ackId="#[vars.acknowlegeId]"/>
+	</flow>
+</mule>
